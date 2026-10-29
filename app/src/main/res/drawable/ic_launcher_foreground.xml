@@ -1,19 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  The full launcher artwork (paper texture + reload glyph) lives in the
+  background layer (@mipmap/ic_launcher_background), so the foreground layer
+  stays fully transparent.
+-->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
-    android:viewportHeight="108">
-    <group>
-        <clip-path android:pathData="M42,30h24a12,12 0 0 1 12,12v24a12,12 0 0 1 -12,12h-24a12,12 0 0 1 -12,-12v-24a12,12 0 0 1 12,-12z" />
-        <path
-            android:fillColor="#F3F0E8"
-            android:pathData="M24,24h60v60h-60z" />
-        <path
-            android:fillColor="#0A0A0C"
-            android:pathData="M22,88 L44,54 L56,68 L68,48 L90,88 Z" />
-        <path
-            android:fillColor="#0A0A0C"
-            android:pathData="M52,44 m-5.5,0 a5.5,5.5 0 1,0 11,0 a5.5,5.5 0 1,0 -11,0" />
-    </group>
-</vector>
+    android:viewportHeight="108" />
