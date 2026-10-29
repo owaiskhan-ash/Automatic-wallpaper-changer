@@ -1,0 +1,772 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>AutoWall — automatic wallpaper changer for Android</title>
+<meta name="description" content="AutoWall rotates the photos you choose on a schedule you set. Minimal, dark, no ads, no accounts. Free APK for Android 8+." />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%23F3F0E8'/%3E%3Cpath d='M8 54 L26 24 L36 36 L46 20 L60 54 Z' fill='%230A0A0C'/%3E%3Ccircle cx='26' cy='16' r='5' fill='%230A0A0C'/%3E%3C/svg%3E" />
+<style>
+  :root {
+    --bg: #08080a;
+    --bg-deep: #050506;
+    --surface: #101013;
+    --surface-2: #17171c;
+    --surface-3: #1f1f26;
+    --ink: #f3f0e8;
+    --muted: #83838d;
+    --faint: #5a5a64;
+    --line: #232329;
+    --accent: #e9e4d6;
+    --radius-phone: 46px;
+    --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, "Helvetica Neue", Arial, sans-serif;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--font);
+    -webkit-font-smoothing: antialiased;
+    line-height: 1.5;
+    overflow-x: hidden;
+  }
+  body::before {
+    content: "";
+    position: fixed;
+    inset: -20% 20% 40% -10%;
+    background: radial-gradient(circle at 30% 20%, rgba(233, 228, 214, 0.07), transparent 60%);
+    pointer-events: none;
+    z-index: 0;
+  }
+  a { color: inherit; }
+  .wrap {
+    position: relative;
+    z-index: 1;
+    max-width: 1140px;
+    margin: 0 auto;
+    padding: 72px 28px 96px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 392px;
+    gap: 72px;
+    align-items: start;
+  }
+
+  /* ---------- copy column ---------- */
+  .brand { display: flex; align-items: center; gap: 12px; margin-bottom: 44px; }
+  .brand .mark {
+    width: 34px; height: 34px; border-radius: 11px;
+    background: linear-gradient(160deg, #f7f3e9, #bdb5a1);
+    position: relative;
+  }
+  .brand .mark::after {
+    content: ""; position: absolute; inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Cpath d='M5 31 L15 17 L21 24 L27 14 L35 31 Z' fill='%2314141a'/%3E%3Ccircle cx='13' cy='12' r='2.6' fill='%2314141a'/%3E%3C/svg%3E");
+    background-size: 100% 100%;
+  }
+  .brand span { font-size: 17px; font-weight: 500; letter-spacing: -0.2px; }
+  .brand em {
+    font-style: normal; color: var(--faint); font-size: 12px;
+    letter-spacing: 0.14em; text-transform: uppercase; margin-left: 2px;
+  }
+
+  .kicker {
+    font-size: 10.5px; letter-spacing: 0.18em; text-transform: uppercase;
+    color: var(--muted); margin: 0 0 18px;
+  }
+  h1 {
+    font-size: clamp(38px, 5.2vw, 58px);
+    line-height: 1.02; letter-spacing: -0.035em; font-weight: 500;
+    margin: 0 0 22px;
+  }
+  h1 .dim { color: var(--faint); }
+  .lede { color: var(--muted); font-size: 16.5px; max-width: 46ch; margin: 0 0 34px; }
+
+  .cta { display: flex; flex-wrap: wrap; align-items: center; gap: 16px; margin-bottom: 12px; }
+  .btn {
+    display: inline-flex; align-items: center; gap: 10px;
+    background: var(--accent); color: #0b0b0c;
+    border: 0; border-radius: 999px; padding: 15px 26px;
+    font-family: inherit; font-size: 15px; font-weight: 500; letter-spacing: -0.1px;
+    text-decoration: none; cursor: pointer;
+    transition: transform .18s ease, filter .18s ease;
+  }
+  .btn:hover { transform: translateY(-1px); filter: brightness(1.05); }
+  .btn svg { width: 15px; height: 15px; }
+  .meta { font-size: 12.5px; color: var(--faint); }
+  .meta code { color: var(--muted); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11.5px; }
+
+  .features { margin: 46px 0 0; padding: 0; list-style: none; display: grid; gap: 18px; max-width: 48ch; }
+  .features li { display: grid; grid-template-columns: 18px 1fr; gap: 14px; font-size: 14.5px; color: var(--muted); }
+  .features b { color: var(--ink); font-weight: 500; display: block; margin-bottom: 2px; font-size: 15px; }
+  .dot {
+    width: 6px; height: 6px; border-radius: 50%; background: var(--ink);
+    margin: 9px 0 0 6px; opacity: .8;
+  }
+
+  .steps { margin-top: 52px; padding-top: 28px; border-top: 1px solid var(--line); }
+  .steps h2 { font-size: 10.5px; letter-spacing: .18em; text-transform: uppercase; color: var(--faint); font-weight: 500; margin: 0 0 16px; }
+  .steps ol { margin: 0; padding: 0; list-style: none; counter-reset: s; display: grid; gap: 12px; }
+  .steps li { counter-increment: s; display: grid; grid-template-columns: 22px 1fr; gap: 12px; font-size: 13.5px; color: var(--muted); }
+  .steps li::before {
+    content: counter(s); color: var(--faint); font-size: 11px; font-variant-numeric: tabular-nums;
+    border: 1px solid var(--line); border-radius: 50%; width: 20px; height: 20px;
+    display: grid; place-items: center; margin-top: 1px;
+  }
+  .foot { margin-top: 46px; display: flex; flex-wrap: wrap; gap: 18px; font-size: 12.5px; color: var(--faint); }
+  .foot a { color: var(--muted); text-decoration: none; border-bottom: 1px solid var(--line); padding-bottom: 1px; }
+  .foot a:hover { color: var(--ink); border-color: var(--faint); }
+
+  /* ---------- phone ---------- */
+  .phone-col { position: sticky; top: 48px; }
+  .phone-note { text-align: center; font-size: 11.5px; color: var(--faint); margin-top: 20px; letter-spacing: .04em; }
+  .phone {
+    width: 392px; height: 812px;
+    border-radius: var(--radius-phone);
+    padding: 10px;
+    background: linear-gradient(180deg, #1c1c22, #0e0e12);
+    box-shadow:
+      0 0 0 1px rgba(255,255,255,.07),
+      0 40px 80px -20px rgba(0,0,0,.9),
+      0 0 0 9px rgba(255,255,255,.02);
+    position: relative;
+  }
+  .phone::after {
+    content: ""; position: absolute; top: 18px; left: 50%; transform: translateX(-50%);
+    width: 76px; height: 22px; border-radius: 999px; background: #000; z-index: 5;
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,.05);
+  }
+  .screen {
+    width: 100%; height: 100%;
+    border-radius: 38px; overflow: hidden; position: relative;
+    background: linear-gradient(180deg, #08080a, #050506);
+    display: flex; flex-direction: column;
+  }
+  .statusbar {
+    height: 44px; flex: 0 0 44px;
+    display: flex; align-items: flex-end; justify-content: space-between;
+    padding: 0 30px 6px; font-size: 12px; color: var(--ink); letter-spacing: .02em;
+  }
+  .statusbar .icons { display: flex; align-items: center; gap: 5px; opacity: .9; }
+  .statusbar .bar { width: 3px; border-radius: 1px; background: currentColor; }
+  .app { flex: 1; overflow-y: auto; overflow-x: hidden; padding: 6px 20px 26px; scrollbar-width: none; }
+  .app::-webkit-scrollbar { display: none; }
+
+  /* header */
+  .app-header { display: flex; align-items: center; gap: 12px; padding: 8px 0 18px; }
+  .app-header .mark { width: 38px; height: 38px; border-radius: 12px; flex: 0 0 38px;
+    background: linear-gradient(160deg, #f6f2e7, #bdb5a1); position: relative; }
+  .app-header .mark::after { content: ""; position: absolute; inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Cpath d='M5 31 L15 17 L21 24 L27 14 L35 31 Z' fill='%2314141a'/%3E%3Ccircle cx='13' cy='12' r='2.4' fill='%2314141a'/%3E%3C/svg%3E");
+    background-size: 100% 100%; }
+  .app-header h2 { font-size: 21px; font-weight: 500; letter-spacing: -0.03em; margin: 0; line-height: 1.15; }
+  .app-header p { margin: 1px 0 0; font-size: 11.5px; color: var(--muted); }
+  .app-header .grow { flex: 1; }
+
+  .switch {
+    width: 50px; height: 30px; border-radius: 999px; background: var(--surface-3);
+    border: 0; padding: 3px; cursor: pointer; position: relative;
+    transition: background .18s ease; flex: 0 0 50px;
+  }
+  .switch span {
+    display: block; width: 24px; height: 24px; border-radius: 50%; background: var(--faint);
+    transition: transform .18s cubic-bezier(.2,.8,.2,1), background .18s ease;
+  }
+  .switch[aria-checked="true"] { background: var(--ink); }
+  .switch[aria-checked="true"] span { transform: translateX(20px); background: #0a0a0c; }
+
+  /* hero */
+  .hero {
+    position: relative; height: 300px; border-radius: 24px; overflow: hidden;
+    background: var(--surface); isolation: isolate;
+    transition: border-radius .18s ease;
+  }
+  .hero .backdrop, .hero .photo {
+    position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover;
+    transition: opacity .35s ease;
+  }
+  .hero .backdrop { filter: blur(22px) brightness(.5); transform: scale(1.15); }
+  .hero .photo.fit { object-fit: contain; }
+  .hero .tint { position: absolute; inset: 0; opacity: 0; transition: background .25s ease, opacity .25s ease; }
+  .hero .scrim { position: absolute; inset: 0; background: linear-gradient(to bottom, transparent 45%, rgba(0,0,0,.85)); }
+  .hero .hero-foot {
+    position: absolute; left: 0; right: 0; bottom: 0; padding: 18px;
+    display: flex; align-items: flex-end; gap: 12px;
+  }
+  .hero .label { font-size: 9.5px; letter-spacing: .16em; text-transform: uppercase; color: #d8d4c8; }
+  .hero .when { font-size: 15px; font-weight: 500; margin-top: 2px; }
+  .hero .next { font-size: 11.5px; color: rgba(233,228,214,.72); margin-top: 1px; }
+  .refresh {
+    margin-left: auto; width: 46px; height: 46px; border-radius: 50%;
+    background: rgba(255,255,255,.16); border: 0; cursor: pointer;
+    display: grid; place-items: center; color: #fff; flex: 0 0 46px;
+    transition: background .2s ease, transform .2s ease;
+  }
+  .refresh:hover { background: rgba(255,255,255,.24); }
+  .refresh:active { transform: scale(.94); }
+  .refresh svg { width: 19px; height: 19px; }
+
+  /* stats */
+  .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 16px 0 26px; }
+  .stat { background: var(--surface); border-radius: 18px; padding: 12px 14px; }
+  .stat b { display: block; font-size: 10px; letter-spacing: .14em; text-transform: uppercase; color: var(--faint); font-weight: 500; }
+  .stat span { display: block; margin-top: 4px; font-size: 14.5px; font-weight: 500; }
+  .stat.is-on span { color: var(--accent); }
+
+  .section-label {
+    display: flex; justify-content: space-between; align-items: center;
+    font-size: 10px; letter-spacing: .16em; text-transform: uppercase; color: var(--muted);
+    margin-bottom: 12px;
+  }
+  .section-label em { font-style: normal; color: var(--faint); text-transform: none; letter-spacing: 0; font-size: 11.5px; }
+
+  /* photo strip */
+  .strip { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 6px; scrollbar-width: none; margin-bottom: 26px; }
+  .strip::-webkit-scrollbar { display: none; }
+  .thumb {
+    position: relative; width: 82px; height: 108px; flex: 0 0 82px;
+    border-radius: 18px; overflow: hidden; background: var(--surface-2);
+    cursor: pointer; border: 0; padding: 0; display: block;
+  }
+  .thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .thumb.active::after {
+    content: ""; position: absolute; inset: 0; border-radius: 18px;
+    box-shadow: inset 0 0 0 1.5px var(--ink);
+  }
+  .thumb .x {
+    position: absolute; top: 6px; right: 6px; width: 22px; height: 22px; border-radius: 50%;
+    background: rgba(0,0,0,.6); display: grid; place-items: center; color: #fff;
+    font-size: 11px; line-height: 1; border: 0; cursor: pointer;
+  }
+  .add-tile {
+    width: 82px; height: 108px; flex: 0 0 82px; border-radius: 18px;
+    border: 1px dashed var(--line); background: transparent; color: var(--muted);
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
+    font-size: 11.5px; cursor: pointer; font-family: inherit;
+  }
+  .add-tile:hover { color: var(--ink); border-color: var(--faint); }
+  .add-tile svg { width: 18px; height: 18px; }
+
+  /* chips */
+  .chips { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; margin-bottom: 26px; }
+  .chips::-webkit-scrollbar { display: none; }
+  .chip {
+    border: 0; border-radius: 999px; background: var(--surface-2); color: var(--muted);
+    padding: 9px 16px; font-size: 14px; font-family: inherit; cursor: pointer;
+    white-space: nowrap; transition: background .18s ease, color .18s ease;
+  }
+  .chip:hover { color: var(--ink); }
+  .chip.on { background: var(--ink); color: #0b0b0c; }
+
+  /* look card */
+  .card { background: var(--surface); border-radius: 24px; padding: 18px; }
+  .row { display: flex; align-items: center; gap: 12px; }
+  .row .row-label { font-size: 14px; color: var(--muted); }
+  .row .row-value { margin-left: auto; font-size: 12px; color: var(--faint); }
+  .hr { height: 1px; background: var(--line); margin: 16px 0; }
+  .segmented { display: flex; gap: 6px; margin-left: auto; }
+  input[type="range"] {
+    -webkit-appearance: none; appearance: none; width: 100%; height: 24px;
+    background: transparent; margin: 0; cursor: pointer;
+  }
+  input[type="range"]::-webkit-slider-runnable-track {
+    height: 4px; border-radius: 999px; background: var(--surface-3);
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none; width: 16px; height: 16px; border-radius: 50%;
+    background: var(--ink); margin-top: -6px; box-shadow: 0 1px 3px rgba(0,0,0,.5);
+  }
+  input[type="range"]::-moz-range-track { height: 4px; border-radius: 999px; background: var(--surface-3); }
+  input[type="range"]::-moz-range-thumb { width: 16px; height: 16px; border: 0; border-radius: 50%; background: var(--ink); }
+  .swatches { display: flex; gap: 10px; overflow-x: auto; scrollbar-width: none; padding: 2px 0; }
+  .swatches::-webkit-scrollbar { display: none; }
+  .swatch {
+    width: 32px; height: 32px; flex: 0 0 32px; border-radius: 50%; border: 0; cursor: pointer;
+    position: relative; padding: 0; background: var(--surface-3);
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,.06);
+  }
+  .swatch.on { box-shadow: 0 0 0 1.5px var(--bg) inset, 0 0 0 3px var(--ink) inset; }
+  .swatch.none::after {
+    content: ""; position: absolute; left: 22%; right: 22%; top: 50%; height: 1px;
+    background: var(--muted); transform: rotate(-45deg);
+  }
+  .toggle-row { display: flex; align-items: center; gap: 12px; }
+  .toggle-row .txt b { display: block; font-size: 14.5px; font-weight: 500; color: var(--ink); }
+  .toggle-row .txt span { font-size: 11.5px; color: var(--faint); }
+  .toggle-row .switch { margin-left: auto; width: 44px; height: 26px; flex: 0 0 44px; }
+  .toggle-row .switch span { width: 20px; height: 20px; }
+  .toggle-row .switch[aria-checked="true"] span { transform: translateX(18px); }
+
+  .app-footer { margin-top: 26px; padding-top: 16px; border-top: 1px solid var(--line); }
+  .app-footer p { font-size: 11.5px; color: var(--faint); margin: 0 0 6px; max-width: 30ch; }
+  .app-footer small { font-size: 9.5px; letter-spacing: .14em; text-transform: uppercase; color: var(--faint); }
+
+  .sheet-scrim {
+    position: absolute; inset: 0; z-index: 6; display: flex; align-items: flex-end;
+    background: rgba(0,0,0,.55); backdrop-filter: blur(2px); animation: fade .18s ease;
+  }
+  .sheet {
+    width: 100%; background: var(--surface); border-radius: 28px 28px 0 0;
+    padding: 20px 20px 24px; animation: rise .22s cubic-bezier(.2,.8,.2,1);
+  }
+  .sheet-title { font-size: 15px; font-weight: 500; }
+  .sheet-sub { font-size: 11.5px; color: var(--muted); margin: 6px 0 18px; }
+  .source {
+    width: 100%; display: flex; align-items: center; gap: 12px; text-align: left;
+    background: var(--surface-2); border: 0; border-radius: 18px; color: inherit;
+    padding: 14px 16px; font-family: inherit; cursor: pointer; margin-bottom: 10px;
+  }
+  .source span { flex: 1; }
+  .source b { display: block; font-size: 14.5px; font-weight: 500; }
+  .source i { font-style: normal; font-size: 11.5px; color: var(--faint); }
+  .source em { font-style: normal; color: var(--muted); font-size: 16px; }
+  .source:hover { background: var(--surface-3); }
+  .cancel {
+    width: 100%; background: transparent; border: 0; color: var(--muted);
+    font-family: inherit; font-size: 14px; padding: 12px; cursor: pointer;
+  }
+  @keyframes fade { from { opacity: 0 } to { opacity: 1 } }
+  @keyframes rise { from { transform: translateY(16px) } to { transform: translateY(0) } }
+
+  .toast {
+    position: absolute; left: 20px; right: 20px; bottom: 22px;
+    background: var(--surface-3); color: var(--ink); border-radius: 16px;
+    padding: 13px 16px; font-size: 12.5px; opacity: 0; transform: translateY(10px);
+    transition: opacity .22s ease, transform .22s ease; pointer-events: none; z-index: 4;
+  }
+  .toast.show { opacity: 1; transform: translateY(0); }
+
+  @media (max-width: 980px) {
+    .wrap { grid-template-columns: 1fr; gap: 56px; padding: 48px 20px 72px; }
+    .phone-col { position: static; display: flex; flex-direction: column; align-items: center; }
+    .phone { transform-origin: top center; }
+    h1 { font-size: clamp(34px, 9vw, 48px); }
+    .brand { margin-bottom: 32px; }
+  }
+  @media (max-width: 440px) {
+    .phone { transform: scale(.86); margin-bottom: -110px; }
+  }
+</style>
+</head>
+<body>
+<main class="wrap">
+  <section>
+    <div class="brand">
+      <div class="mark"></div>
+      <span>AutoWall</span>
+      <em>v1.1.0</em>
+    </div>
+
+    <p class="kicker">Android · automatic wallpaper changer</p>
+    <h1>Your photos,<br /><span class="dim">rotating quietly.</span></h1>
+    <p class="lede">
+      Pick a handful of photos, choose how often they should change, and forget about it.
+      AutoWall reshapes every shot to your screen — rounded corners, colour wash, lock screen —
+      and swaps it in the background with no ads, no accounts and no drama.
+    </p>
+
+    <div class="cta">
+      <a class="btn" id="download" href="https://github.com/owaiskhan-ash/Automatic-wallpaper-changer/releases/latest/download/AutoWall.apk">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M12 4v11m0 0 4-4m-4 4-4-4" /><path d="M5 19h14" />
+        </svg>
+        Download APK
+      </a>
+      <div class="meta">7.3 MB · Android 8.0+<br /><code>signed release · v1.1.0</code></div>
+    </div>
+
+    <ul class="features">
+      <li><span class="dot"></span><span><b>Any interval, 5 minutes to a day</b>WorkManager keeps the rotation alive through reboots and app sweeps.</span></li>
+      <li><span class="dot"></span><span><b>Rounded, tinted, fitted</b>Renders each photo for your exact screen size, with corner radius, fit mode and a colour wash.</span></li>
+      <li><span class="dot"></span><span><b>Pick from anywhere on the device</b>The system gallery picker, or a full file browser for local storage, SD cards and Downloads.</span></li>
+      <li><span class="dot"></span><span><b>Private by construction</b>Photos are copied into app storage on the device. Nothing is uploaded, ever.</span></li>
+      <li><span class="dot"></span><span><b>Quiet UI</b>One screen, no feeds, no onboarding. Tap a photo to apply it right now.</span></li>
+    </ul>
+
+    <div class="steps">
+      <h2>Installing</h2>
+      <ol>
+        <li>Download the APK and open it on your phone.</li>
+        <li>Allow “install unknown apps” for your browser when Android asks.</li>
+        <li>Pick photos, flip the switch, done.</li>
+      </ol>
+    </div>
+
+    <div class="foot">
+      <a href="https://github.com/owaiskhan-ash/Automatic-wallpaper-changer">Source on GitHub</a>
+      <a href="https://github.com/owaiskhan-ash/Automatic-wallpaper-changer/releases">All releases</a>
+      <a href="https://github.com/owaiskhan-ash/Automatic-wallpaper-changer#readme">README</a>
+    </div>
+  </section>
+
+  <aside class="phone-col">
+    <div class="phone">
+      <div class="screen">
+        <div class="statusbar">
+          <span>9:41</span>
+          <span class="icons" aria-hidden="true">
+            <span class="bar" style="height:5px"></span>
+            <span class="bar" style="height:8px"></span>
+            <span class="bar" style="height:11px"></span>
+            <svg width="16" height="12" viewBox="0 0 24 18" fill="currentColor" style="margin-left:4px"><path d="M2 12h3v5H2zm5-3h3v8H7zm5-3h3v11h-3zm5-3h3v14h-3z"/></svg>
+          </span>
+        </div>
+
+        <div class="app" id="app">
+          <header class="app-header">
+            <div class="mark"></div>
+            <div>
+              <h2>AutoWall</h2>
+              <p id="status-line">Rotation paused</p>
+            </div>
+            <div class="grow"></div>
+            <button class="switch" id="master" role="switch" aria-checked="false" aria-label="Automatic rotation">
+              <span></span>
+            </button>
+          </header>
+
+          <div class="hero" id="hero">
+            <img class="backdrop" id="hero-backdrop" src="assets/wall-1.jpg" alt="" aria-hidden="true" />
+            <img class="photo" id="hero-photo" src="assets/wall-1.jpg" alt="Current wallpaper" />
+            <div class="tint" id="hero-tint"></div>
+            <div class="scrim"></div>
+            <div class="hero-foot">
+              <div>
+                <div class="label">Current</div>
+                <div class="when" id="hero-when">42m ago</div>
+                <div class="next" id="hero-next">Turn on to rotate automatically</div>
+              </div>
+              <button class="refresh" id="refresh" aria-label="Change wallpaper now">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true">
+                  <path d="M20 12a8 8 0 1 1-2.7-6" /><path d="M20 4v5h-5" />
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          <div class="stats">
+            <div class="stat"><b>Photos</b><span id="stat-photos">3</span></div>
+            <div class="stat"><b>Every</b><span id="stat-every">1h</span></div>
+            <div class="stat" id="stat-status-card"><b>Status</b><span id="stat-status">Off</span></div>
+          </div>
+
+          <div class="section-label"><span>Photos</span><em id="photos-count">3</em></div>
+          <div class="strip" id="strip"></div>
+
+          <div class="section-label"><span>Change every</span></div>
+          <div class="chips" id="intervals"></div>
+
+          <div class="section-label"><span>Look</span></div>
+          <div class="card">
+            <div class="row">
+              <span class="row-label">Fit</span>
+              <div class="segmented" id="fit">
+                <button class="chip on" data-fit="fill">Fill</button>
+                <button class="chip" data-fit="fit">Fit</button>
+              </div>
+            </div>
+            <div class="hr"></div>
+            <div class="row">
+              <span class="row-label">Corners</span>
+              <span class="row-value" id="radius-value">24dp</span>
+            </div>
+            <input type="range" id="radius" min="0" max="64" step="4" value="24" aria-label="Corner radius" />
+
+            <div class="hr"></div>
+            <span class="row-label">Tone</span>
+            <div class="swatches" id="swatches"></div>
+            <div id="strength-wrap" style="display:none">
+              <div class="row"><span class="row-label" style="font-size:12px">Strength</span><span class="row-value" id="strength-value">22%</span></div>
+              <input type="range" id="strength" min="5" max="80" step="1" value="22" aria-label="Tone strength" />
+            </div>
+
+            <div class="hr"></div>
+            <div class="toggle-row" style="margin-bottom:14px">
+              <div class="txt"><b>Shuffle order</b><span>Random photo each time</span></div>
+              <button class="switch" id="shuffle" role="switch" aria-checked="false" aria-label="Shuffle"><span></span></button>
+            </div>
+            <div class="toggle-row">
+              <div class="txt"><b>Lock screen too</b><span>Same photo on both screens</span></div>
+              <button class="switch" id="lock" role="switch" aria-checked="true" aria-label="Lock screen"><span></span></button>
+            </div>
+          </div>
+
+          <div class="app-footer">
+            <p>Wallpapers rotate in the background. No ads, no accounts, no data leaves your phone.</p>
+            <small>AutoWall 1.1</small>
+          </div>
+        </div>
+
+        <div class="toast" id="toast">Wallpaper updated</div>
+      </div>
+    </div>
+    <p class="phone-note">Interactive preview — this is the real UI, live in your browser.</p>
+    <input type="file" id="file-input" accept="image/*" multiple hidden />
+  </aside>
+</main>
+
+<script>
+(function () {
+  const TONES = [
+    { label: "None", color: null },
+    { label: "Midnight", color: "#0A1B3A" },
+    { label: "Dusk", color: "#2A1636" },
+    { label: "Forest", color: "#0C2A1E" },
+    { label: "Ember", color: "#3A150F" },
+    { label: "Ocean", color: "#04283A" },
+    { label: "Mono", color: "#101014" },
+  ];
+  const INTERVALS = [5, 15, 30, 60, 180, 360, 720, 1440];
+
+  const state = {
+    on: false,
+    interval: 60,
+    fit: "fill",
+    radius: 24,
+    tone: 0,
+    strength: 0.22,
+    shuffle: false,
+    lock: true,
+    active: 0,
+    lastApplied: Date.now() - 42 * 60 * 1000,
+    photos: [
+      { src: "assets/wall-1.jpg", name: "Ridgeline" },
+      { src: "assets/wall-2.jpg", name: "Dunes" },
+      { src: "assets/wall-3.jpg", name: "Tide" },
+    ],
+  };
+
+  const $ = (id) => document.getElementById(id);
+  const label = (m) => (m < 60 ? m + "m" : m === 1440 ? "24h" : m / 60 + "h");
+
+  function relTime(ts) {
+    const diff = Date.now() - ts;
+    if (diff < 60000) return "Just now";
+    if (diff < 3600000) return Math.floor(diff / 60000) + "m ago";
+    if (diff < 86400000) return Math.floor(diff / 3600000) + "h ago";
+    return Math.floor(diff / 86400000) + "d ago";
+  }
+
+  function nextChange() {
+    const due = state.lastApplied + state.interval * 60000;
+    const remaining = due - Date.now();
+    if (remaining <= 0) return "a moment";
+    if (remaining < 3600000) return Math.max(1, Math.floor(remaining / 60000)) + "m";
+    if (remaining < 86400000) return Math.floor(remaining / 3600000) + "h";
+    return Math.floor(remaining / 86400000) + "d";
+  }
+
+  function toast(text) {
+    const el = $("toast");
+    el.textContent = text;
+    el.classList.add("show");
+    clearTimeout(toast._t);
+    toast._t = setTimeout(() => el.classList.remove("show"), 1900);
+  }
+
+  /* ---------- render ---------- */
+  function renderStrip() {
+    const strip = $("strip");
+    strip.innerHTML = "";
+    state.photos.forEach((photo, index) => {
+      const btn = document.createElement("button");
+      btn.className = "thumb" + (index === state.active ? " active" : "");
+      btn.innerHTML = '<img alt="" src="' + photo.src + '" />';
+      btn.onclick = () => {
+        state.active = index;
+        state.lastApplied = Date.now();
+        render();
+        toast("Wallpaper updated");
+      };
+      const x = document.createElement("button");
+      x.className = "x";
+      x.textContent = "✕";
+      x.setAttribute("aria-label", "Remove photo");
+      x.onclick = (event) => {
+        event.stopPropagation();
+        state.photos.splice(index, 1);
+        if (state.active >= state.photos.length) state.active = Math.max(0, state.photos.length - 1);
+        render();
+        toast("Photo removed");
+      };
+      btn.appendChild(x);
+      strip.appendChild(btn);
+    });
+    const add = document.createElement("button");
+    add.className = "add-tile";
+    add.innerHTML =
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg><span>Add</span>';
+    add.onclick = () => openSourceSheet();
+    strip.appendChild(add);
+  }
+
+  function renderIntervals() {
+    const wrap = $("intervals");
+    wrap.innerHTML = "";
+    INTERVALS.forEach((minutes) => {
+      const chip = document.createElement("button");
+      chip.className = "chip" + (minutes === state.interval ? " on" : "");
+      chip.textContent = label(minutes);
+      chip.onclick = () => {
+        state.interval = minutes;
+        render();
+      };
+      wrap.appendChild(chip);
+    });
+  }
+
+  function renderSwatches() {
+    const wrap = $("swatches");
+    wrap.innerHTML = "";
+    TONES.forEach((tone, index) => {
+      const swatch = document.createElement("button");
+      swatch.className = "swatch" + (index === state.tone ? " on" : "") + (tone.color ? "" : " none");
+      if (tone.color) swatch.style.background = tone.color;
+      swatch.setAttribute("aria-label", tone.label);
+      swatch.onclick = () => {
+        state.tone = index;
+        render();
+      };
+      wrap.appendChild(swatch);
+    });
+  }
+
+  function renderHero() {
+    if (!state.photos.length) return;
+    const photo = state.photos[state.active];
+    $("hero-photo").src = photo.src;
+    $("hero-backdrop").src = photo.src;
+    $("hero-photo").className = "photo" + (state.fit === "fit" ? " fit" : "");
+    $("hero-backdrop").style.display = state.fit === "fit" ? "block" : "block";
+    $("hero").style.borderRadius = state.radius + "px";
+    const tone = TONES[state.tone];
+    const tint = $("hero-tint");
+    tint.style.background = tone.color || "transparent";
+    tint.style.opacity = tone.color ? state.strength : 0;
+    $("hero-when").textContent = relTime(state.lastApplied);
+    $("hero-next").textContent = state.on
+      ? "Next change in " + nextChange()
+      : "Turn on to rotate automatically";
+  }
+
+  function render() {
+    renderStrip();
+    renderIntervals();
+    renderSwatches();
+    renderHero();
+
+    $("master").setAttribute("aria-checked", String(state.on));
+    $("status-line").textContent = state.on ? "Rotating automatically" : "Rotation paused";
+    $("stat-photos").textContent = state.photos.length;
+    $("photos-count").textContent = state.photos.length;
+    $("stat-every").textContent = label(state.interval);
+    $("stat-status").textContent = state.on ? "On" : "Off";
+    $("stat-status-card").classList.toggle("is-on", state.on);
+    $("radius-value").textContent = state.radius + "dp";
+    $("strength-wrap").style.display = state.tone === 0 ? "none" : "block";
+    $("strength").value = Math.round(state.strength * 100);
+    $("strength-value").textContent = Math.round(state.strength * 100) + "%";
+    $("shuffle").setAttribute("aria-checked", String(state.shuffle));
+    $("lock").setAttribute("aria-checked", String(state.lock));
+    document.querySelectorAll("#fit .chip").forEach((chip) => {
+      chip.classList.toggle("on", chip.dataset.fit === state.fit);
+    });
+  }
+
+  /* ---------- interactions ---------- */
+  $("master").onclick = () => {
+    if (!state.photos.length) {
+      toast("Add a photo first");
+      return;
+    }
+    state.on = !state.on;
+    render();
+    toast(state.on ? "Auto rotation on" : "Auto rotation paused");
+  };
+
+  $("refresh").onclick = () => {
+    if (!state.photos.length) {
+      toast("Add a photo first");
+      return;
+    }
+    state.active = state.shuffle
+      ? (state.active + 1 + Math.floor(Math.random() * (state.photos.length - 1 || 1))) % state.photos.length
+      : (state.active + 1) % state.photos.length;
+    state.lastApplied = Date.now();
+    render();
+    toast("Wallpaper updated");
+  };
+
+  $("radius").oninput = (event) => {
+    state.radius = Number(event.target.value);
+    render();
+  };
+
+  $("strength").oninput = (event) => {
+    state.strength = Number(event.target.value) / 100;
+    render();
+  };
+
+  document.querySelectorAll("#fit .chip").forEach((chip) => {
+    chip.onclick = () => {
+      state.fit = chip.dataset.fit;
+      render();
+    };
+  });
+
+  $("shuffle").onclick = () => {
+    state.shuffle = !state.shuffle;
+    render();
+  };
+  $("lock").onclick = () => {
+    state.lock = !state.lock;
+    render();
+  };
+
+  $("file-input").onchange = (event) => {
+    const files = Array.from(event.target.files || []);
+    files.forEach((file) => {
+      state.photos.push({ src: URL.createObjectURL(file), name: file.name });
+    });
+    if (files.length) {
+      state.active = state.photos.length - files.length;
+      toast(files.length === 1 ? "Photo added" : files.length + " photos added");
+      render();
+    }
+    event.target.value = "";
+  };
+
+  /* Source chooser, mirroring the app's "Add photos" sheet. */
+  function openSourceSheet() {
+    const sheet = document.createElement("div");
+    sheet.className = "sheet-scrim";
+    sheet.innerHTML =
+      '<div class="sheet" role="dialog" aria-label="Add photos">' +
+      '<div class="sheet-title">Add photos</div>' +
+      '<div class="sheet-sub">Choose from your gallery, or browse the files and folders on this device.</div>' +
+      '<button class="source" data-src="gallery"><span><b>Photo gallery</b><i>Recent shots, albums and cloud libraries</i></span><em>+</em></button>' +
+      '<button class="source" data-src="files"><span><b>Files &amp; downloads</b><i>Browse local storage, SD card and Downloads</i></span><em>+</em></button>' +
+      '<button class="cancel">Cancel</button>' +
+      "</div>";
+    sheet.addEventListener("click", (event) => {
+      if (event.target === sheet) sheet.remove();
+      const src = event.target.closest("[data-src]");
+      if (src) {
+        sheet.remove();
+        $("file-input").click();
+      }
+      if (event.target.closest(".cancel")) sheet.remove();
+    });
+    document.querySelector(".screen").appendChild(sheet);
+  }
+
+  /* Slow tick so the preview keeps counting down like the real app. */
+  setInterval(() => {
+    if (state.photos.length) renderHero();
+  }, 30000);
+
+  render();
+})();
+</script>
+</body>
+</html>
