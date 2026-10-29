@@ -16,7 +16,8 @@ class RotationWorker(
     override suspend fun doWork(): Result {
         val repository = SettingsRepository(applicationContext)
         val settings = repository.settings.first()
-        if (!settings.enabled) return Result.success()
+        val forceManualChange = inputData.getBoolean(Scheduler.INPUT_FORCE, false)
+        if (!settings.enabled && !forceManualChange) return Result.success()
 
         val photos = GalleryStore(applicationContext).photos()
         if (photos.isEmpty()) return Result.success()
@@ -25,7 +26,7 @@ class RotationWorker(
         return try {
             WallpaperEngine.apply(applicationContext, photos[index], settings)
             repository.markApplied(index)
-            if (settings.intervalMinutes < Scheduler.MIN_PERIODIC_MINUTES) {
+            if (settings.enabled && settings.intervalMinutes < Scheduler.MIN_PERIODIC_MINUTES) {
                 Scheduler.scheduleChain(applicationContext, settings.intervalMinutes)
             }
             Result.success()

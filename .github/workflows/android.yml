@@ -80,7 +80,7 @@ jobs:
             -F body=@failure.md > /dev/null || echo "could not post comment"
 
       - name: Publish GitHub release
-        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+        if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'workflow_dispatch'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ steps.version.outputs.name }}
@@ -93,6 +93,7 @@ jobs:
 
             * Minimum Android 8.0 (API 26), built for Android 14.
             * Photos can be picked from your gallery **or** browsed from local storage (Files & downloads).
+            * Includes a one-minute rotation option and a one-tap home-screen widget for the next wallpaper.
             * Release-signed with the repository key (`SHA-256` fingerprint in the README).
             * Install: download `AutoWall.apk` below, then allow "install unknown apps" for your browser/file manager.
 

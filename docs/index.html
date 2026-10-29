@@ -354,7 +354,7 @@
     <div class="brand">
       <div class="mark"></div>
       <span>AutoWall</span>
-      <em>v1.2.0</em>
+      <em>v1.3.0</em>
     </div>
 
     <p class="kicker">Android · automatic wallpaper changer</p>
@@ -372,14 +372,15 @@
         </svg>
         Download APK
       </a>
-      <div class="meta">7.3 MB · Android 8.0+<br /><code>signed release · v1.2.0</code></div>
+      <div class="meta">7.3 MB · Android 8.0+<br /><code>signed release · v1.3.0</code></div>
     </div>
 
     <ul class="features">
-      <li><span class="dot"></span><span><b>Any interval, 5 minutes to a day</b>WorkManager keeps the rotation alive through reboots and app sweeps.</span></li>
+      <li><span class="dot"></span><span><b>Any interval, 1 minute to a day</b>Short intervals use chained background work; Android may defer them to save battery.</span></li>
       <li><span class="dot"></span><span><b>Rounded, tinted, fitted</b>Renders each photo for your exact screen size, with corner radius, fit mode and a colour wash.</span></li>
       <li><span class="dot"></span><span><b>Pick from anywhere on the device</b>The system gallery picker, or a full file browser for local storage, SD cards and Downloads.</span></li>
       <li><span class="dot"></span><span><b>Private by construction</b>Photos are copied into app storage on the device. Nothing is uploaded, ever.</span></li>
+      <li><span class="dot"></span><span><b>One-tap home-screen widget</b>Advance to the next wallpaper from your launcher without opening the app.</span></li>
       <li><span class="dot"></span><span><b>Quiet UI</b>One screen, no feeds, no onboarding. Tap a photo to apply it right now.</span></li>
     </ul>
 
@@ -516,7 +517,7 @@
     { label: "Ocean", color: "#04283A" },
     { label: "Mono", color: "#101014" },
   ];
-  const INTERVALS = [5, 15, 30, 60, 180, 360, 720, 1440];
+  const INTERVALS = [1, 5, 15, 30, 60, 180, 360, 720, 1440];
 
   const state = {
     on: false,

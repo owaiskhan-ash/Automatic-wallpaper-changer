@@ -1,6 +1,7 @@
 package com.autowall.changer
 
 import com.autowall.changer.model.FitMode
+import com.autowall.changer.model.INTERVALS
 import com.autowall.changer.model.TONES
 import com.autowall.changer.model.intervalLabel
 import com.autowall.changer.work.RotationPicker
@@ -46,7 +47,14 @@ class RotationLogicTest {
     }
 
     @Test
+    fun `one minute is offered as the shortest rotation interval`() {
+        assertEquals(1, INTERVALS.first())
+        assertEquals("1m", intervalLabel(INTERVALS.first()))
+    }
+
+    @Test
     fun `interval labels read naturally`() {
+        assertEquals("1m", intervalLabel(1))
         assertEquals("5m", intervalLabel(5))
         assertEquals("30m", intervalLabel(30))
         assertEquals("1h", intervalLabel(60))

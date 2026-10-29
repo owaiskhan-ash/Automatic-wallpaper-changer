@@ -31,19 +31,20 @@ Or just open [`docs/index.html`](docs/index.html) directly in a browser.
 
 | | |
 |---|---|
-| **Rotate on a schedule** | 5 minutes → 24 hours. Intervals under 15 minutes use a self-chaining worker, the rest use WorkManager periodic work. Survives reboots and app sweeps. |
+| **Rotate on a schedule** | 1 minute → 24 hours. Intervals under 15 minutes use a self-chaining worker (Android may defer background work to save battery); longer intervals use WorkManager periodic work. Survives reboots and app sweeps. |
 | **Shape the wallpaper** | Renders each photo at your screen's exact resolution: corner radius 0–64 dp, `Fill` (crop) or `Fit` (whole photo over a blurred backdrop). |
 | **Tone it down** | Seven colour washes (Midnight, Dusk, Forest, Ember, Ocean, Mono) with adjustable strength. |
 | **Your photos only** | Pick from the gallery or browse any folder on the device (Files & downloads), then the image is copied into app-private storage so rotation keeps working even if you delete the original. No internet permission is requested — nothing leaves the device. |
 | **Lock screen** | Optionally set the same wallpaper on the lock screen. |
-| **Apply now** | Tap any thumbnail (or the refresh button) to set that photo immediately. |
+| **Apply now** | Tap any thumbnail (or the refresh button) to set that photo immediately. Add the **Change wallpaper** widget to your Android home screen for one-tap rotation without opening AutoWall. |
 
 ## Install
 
 1. Download [`AutoWall.apk`](https://github.com/owaiskhan-ash/Automatic-wallpaper-changer/releases/latest/download/AutoWall.apk).
 2. Open the file on your phone; when Android asks, allow *install unknown apps* for your browser or file manager.
 3. Pick photos → flip the switch. The first wallpaper applies straight away.
-4. Optional: exclude AutoWall from aggressive battery managers (Xiaomi, Oppo, Vivo) so rotation is never delayed.
+4. To change it with one tap from your launcher, long-press the home screen, open **Widgets**, and add **AutoWall · Change wallpaper**.
+5. Optional: exclude AutoWall from aggressive battery managers (Xiaomi, Oppo, Vivo) to reduce rotation delays.
 
 Verify the download if you like:
 

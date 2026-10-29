@@ -23,7 +23,7 @@ val TONES: List<Tone> = listOf(
 )
 
 /** Intervals offered in the UI, in minutes. */
-val INTERVALS: List<Int> = listOf(5, 15, 30, 60, 180, 360, 720, 1440)
+val INTERVALS: List<Int> = listOf(1, 5, 15, 30, 60, 180, 360, 720, 1440)
 
 fun intervalLabel(minutes: Int): String = when {
     minutes < 60 -> "${minutes}m"

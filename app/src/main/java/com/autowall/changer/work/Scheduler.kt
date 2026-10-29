@@ -6,6 +6,7 @@ import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.ExistingWorkPolicy
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.PeriodicWorkRequestBuilder
+import androidx.work.workDataOf
 import androidx.work.WorkManager
 import com.autowall.changer.model.AutoWallSettings
 import java.util.concurrent.TimeUnit
@@ -17,6 +18,7 @@ object Scheduler {
     private const val PERIODIC_WORK = "autowall.rotation.periodic"
     private const val CHAIN_WORK = "autowall.rotation.chain"
     private const val NOW_WORK = "autowall.rotation.now"
+    const val INPUT_FORCE = "force_manual_change"
 
     fun sync(context: Context, settings: AutoWallSettings) {
         val workManager = WorkManager.getInstance(context)
@@ -57,7 +59,9 @@ object Scheduler {
     }
 
     fun changeNow(context: Context) {
-        val request = OneTimeWorkRequestBuilder<RotationWorker>().build()
+        val request = OneTimeWorkRequestBuilder<RotationWorker>()
+            .setInputData(workDataOf(INPUT_FORCE to true))
+            .build()
         WorkManager.getInstance(context).enqueueUniqueWork(
             NOW_WORK,
             ExistingWorkPolicy.REPLACE,

@@ -2,4 +2,8 @@
 <resources>
     <string name="app_name">AutoWall</string>
     <string name="pick_photos">Choose photos</string>
+    <string name="widget_name">Change wallpaper</string>
+    <string name="widget_description">Change to the next saved wallpaper with one tap</string>
+    <string name="widget_change_wallpaper">↻  Change wallpaper</string>
+    <string name="widget_change_wallpaper_accessibility">Change wallpaper to the next saved photo</string>
 </resources>

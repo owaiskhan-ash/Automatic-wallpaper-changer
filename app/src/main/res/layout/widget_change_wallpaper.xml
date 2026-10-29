@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<TextView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_change_button"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/widget_button_background"
+    android:contentDescription="@string/widget_change_wallpaper_accessibility"
+    android:fontFamily="sans"
+    android:gravity="center"
+    android:paddingHorizontal="16dp"
+    android:text="@string/widget_change_wallpaper"
+    android:textColor="@android:color/white"
+    android:textSize="15sp"
+    android:textStyle="bold" />
