@@ -34,7 +34,7 @@ Or just open [`docs/index.html`](docs/index.html) directly in a browser.
 | **Rotate on a schedule** | 5 minutes → 24 hours. Intervals under 15 minutes use a self-chaining worker, the rest use WorkManager periodic work. Survives reboots and app sweeps. |
 | **Shape the wallpaper** | Renders each photo at your screen's exact resolution: corner radius 0–64 dp, `Fill` (crop) or `Fit` (whole photo over a blurred backdrop). |
 | **Tone it down** | Seven colour washes (Midnight, Dusk, Forest, Ember, Ocean, Mono) with adjustable strength. |
-| **Your photos only** | Picked through the Android photo picker and copied into app-private storage, so rotation keeps working even if you delete the original. No internet permission is requested — nothing leaves the device. |
+| **Your photos only** | Pick from the gallery or browse any folder on the device (Files & downloads), then the image is copied into app-private storage so rotation keeps working even if you delete the original. No internet permission is requested — nothing leaves the device. |
 | **Lock screen** | Optionally set the same wallpaper on the lock screen. |
 | **Apply now** | Tap any thumbnail (or the refresh button) to set that photo immediately. |
 
@@ -51,6 +51,16 @@ Verify the download if you like:
 sha256sum -c sha256sums.txt   # file attached to each release
 ```
 
+## If a picker does not open
+
+AutoWall offers two ways to add photos: the system **Photo gallery** picker and **Files & downloads**
+(the Android document picker, which browses local storage, SD cards and Downloads). If one of them
+is missing on your device, the other is opened automatically.
+
+The small **Troubleshoot** link at the bottom of the app shows the Android version, whether the
+system photo picker exists, how many photos are stored, and the last error message — tap **Copy**
+to paste it into a bug report.
+
 ## Build it yourself
 
 The APK on the release page is built by [`.github/workflows/android.yml`](.github/workflows/android.yml)
@@ -59,8 +69,8 @@ on every push, then attached to a release.
 ```bash
 git clone https://github.com/owaiskhan-ash/Automatic-wallpaper-changer.git
 cd Automatic-wallpaper-changer
-./gradlew :app:assembleRelease
-# output: app/build/outputs/apk/release/app-release.apk
+./gradlew :app:testDebugUnitTest   # rotation + settings logic
+./gradlew :app:assembleRelease     # output: app/build/outputs/apk/release/app-release.apk
 ```
 
 Requirements: JDK 17 and the Android SDK (platform 34, build-tools 34). `local.properties`
@@ -83,7 +93,7 @@ SHA-256: 71:C8:03:4E:68:32:BE:21:57:22:C7:7C:B6:4F:AE:38:C7:2C:83:6A:FD:7C:73:34
 |---|---|
 | `SET_WALLPAPER`, `SET_WALLPAPER_HINTS` | The whole point. |
 | `RECEIVE_BOOT_COMPLETED` | Re-arm the schedule after a restart. |
-| Photo picker access | Read-only access to only the photos you select. |
+| Photo picker / document access | Read-only access to only the files you choose, granted per selection. |
 | — | No internet, no location, no contacts, no ads SDK. |
 
 ## How it works
@@ -98,6 +108,9 @@ MainActivity ── Compose UI (HomeScreen) ── HomeViewModel ─┬─ Setti
 
 * **< 15 min intervals** — WorkManager's minimum periodic period is 15 minutes, so shorter
   intervals enqueue a one-time worker that re-enqueues itself when it finishes.
+* **Choosing photos** — both the modern photo picker and the document picker are registered;
+  whichever opens is used, and the result is copied into `filesDir/gallery` (with a decodability
+  check) so a later rotation never depends on a URI grant.
 * **Rendering** — the photo is sampled down to screen size, composited onto an ARGB bitmap
   with a rounded-corner mask, optional blurred backdrop (`Fit`) and tone overlay, then handed
   to `WallpaperManager.setBitmap(..., FLAG_SYSTEM | FLAG_LOCK)`.

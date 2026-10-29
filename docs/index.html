@@ -301,6 +301,33 @@
   .app-footer p { font-size: 11.5px; color: var(--faint); margin: 0 0 6px; max-width: 30ch; }
   .app-footer small { font-size: 9.5px; letter-spacing: .14em; text-transform: uppercase; color: var(--faint); }
 
+  .sheet-scrim {
+    position: absolute; inset: 0; z-index: 6; display: flex; align-items: flex-end;
+    background: rgba(0,0,0,.55); backdrop-filter: blur(2px); animation: fade .18s ease;
+  }
+  .sheet {
+    width: 100%; background: var(--surface); border-radius: 28px 28px 0 0;
+    padding: 20px 20px 24px; animation: rise .22s cubic-bezier(.2,.8,.2,1);
+  }
+  .sheet-title { font-size: 15px; font-weight: 500; }
+  .sheet-sub { font-size: 11.5px; color: var(--muted); margin: 6px 0 18px; }
+  .source {
+    width: 100%; display: flex; align-items: center; gap: 12px; text-align: left;
+    background: var(--surface-2); border: 0; border-radius: 18px; color: inherit;
+    padding: 14px 16px; font-family: inherit; cursor: pointer; margin-bottom: 10px;
+  }
+  .source span { flex: 1; }
+  .source b { display: block; font-size: 14.5px; font-weight: 500; }
+  .source i { font-style: normal; font-size: 11.5px; color: var(--faint); }
+  .source em { font-style: normal; color: var(--muted); font-size: 16px; }
+  .source:hover { background: var(--surface-3); }
+  .cancel {
+    width: 100%; background: transparent; border: 0; color: var(--muted);
+    font-family: inherit; font-size: 14px; padding: 12px; cursor: pointer;
+  }
+  @keyframes fade { from { opacity: 0 } to { opacity: 1 } }
+  @keyframes rise { from { transform: translateY(16px) } to { transform: translateY(0) } }
+
   .toast {
     position: absolute; left: 20px; right: 20px; bottom: 22px;
     background: var(--surface-3); color: var(--ink); border-radius: 16px;
@@ -327,7 +354,7 @@
     <div class="brand">
       <div class="mark"></div>
       <span>AutoWall</span>
-      <em>v1.0.0</em>
+      <em>v1.1.0</em>
     </div>
 
     <p class="kicker">Android · automatic wallpaper changer</p>
@@ -345,12 +372,13 @@
         </svg>
         Download APK
       </a>
-      <div class="meta">7.3 MB · Android 8.0+<br /><code>signed release · v1.0.0</code></div>
+      <div class="meta">7.3 MB · Android 8.0+<br /><code>signed release · v1.1.0</code></div>
     </div>
 
     <ul class="features">
       <li><span class="dot"></span><span><b>Any interval, 5 minutes to a day</b>WorkManager keeps the rotation alive through reboots and app sweeps.</span></li>
       <li><span class="dot"></span><span><b>Rounded, tinted, fitted</b>Renders each photo for your exact screen size, with corner radius, fit mode and a colour wash.</span></li>
+      <li><span class="dot"></span><span><b>Pick from anywhere on the device</b>The system gallery picker, or a full file browser for local storage, SD cards and Downloads.</span></li>
       <li><span class="dot"></span><span><b>Private by construction</b>Photos are copied into app storage on the device. Nothing is uploaded, ever.</span></li>
       <li><span class="dot"></span><span><b>Quiet UI</b>One screen, no feeds, no onboarding. Tap a photo to apply it right now.</span></li>
     </ul>
@@ -465,7 +493,7 @@
 
           <div class="app-footer">
             <p>Wallpapers rotate in the background. No ads, no accounts, no data leaves your phone.</p>
-            <small>AutoWall 1.0</small>
+            <small>AutoWall 1.1</small>
           </div>
         </div>
 
@@ -568,7 +596,7 @@
     add.className = "add-tile";
     add.innerHTML =
       '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg><span>Add</span>';
-    add.onclick = () => $("file-input").click();
+    add.onclick = () => openSourceSheet();
     strip.appendChild(add);
   }
 
@@ -707,6 +735,30 @@
     }
     event.target.value = "";
   };
+
+  /* Source chooser, mirroring the app's "Add photos" sheet. */
+  function openSourceSheet() {
+    const sheet = document.createElement("div");
+    sheet.className = "sheet-scrim";
+    sheet.innerHTML =
+      '<div class="sheet" role="dialog" aria-label="Add photos">' +
+      '<div class="sheet-title">Add photos</div>' +
+      '<div class="sheet-sub">Choose from your gallery, or browse the files and folders on this device.</div>' +
+      '<button class="source" data-src="gallery"><span><b>Photo gallery</b><i>Recent shots, albums and cloud libraries</i></span><em>+</em></button>' +
+      '<button class="source" data-src="files"><span><b>Files &amp; downloads</b><i>Browse local storage, SD card and Downloads</i></span><em>+</em></button>' +
+      '<button class="cancel">Cancel</button>' +
+      "</div>";
+    sheet.addEventListener("click", (event) => {
+      if (event.target === sheet) sheet.remove();
+      const src = event.target.closest("[data-src]");
+      if (src) {
+        sheet.remove();
+        $("file-input").click();
+      }
+      if (event.target.closest(".cancel")) sheet.remove();
+    });
+    document.querySelector(".screen").appendChild(sheet);
+  }
 
   /* Slow tick so the preview keeps counting down like the real app. */
   setInterval(() => {

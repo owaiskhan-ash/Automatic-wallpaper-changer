@@ -1,5 +1,7 @@
 package com.autowall.changer.ui
 
+import android.content.Context
+import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -15,6 +17,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBarsPadding
@@ -48,14 +51,17 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.autowall.changer.model.AutoWallSettings
@@ -76,12 +82,16 @@ import com.autowall.changer.ui.theme.Surface3
 import java.io.File
 import kotlin.math.roundToInt
 
+private const val MAX_PICK = 50
+
 @Composable
 fun HomeScreen(viewModel: HomeViewModel) {
+    val context = LocalContext.current
     val settings by viewModel.settings.collectAsStateWithLifecycle()
     val photos by viewModel.photos.collectAsStateWithLifecycle()
     val busy by viewModel.busy.collectAsStateWithLifecycle()
     val message by viewModel.message.collectAsStateWithLifecycle()
+    val lastError by viewModel.lastError.collectAsStateWithLifecycle()
 
     val snackbarHostState = remember { SnackbarHostState() }
     LaunchedEffect(message) {
@@ -90,12 +100,48 @@ fun HomeScreen(viewModel: HomeViewModel) {
         viewModel.consumeMessage()
     }
 
-    val picker = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.PickMultipleVisualMedia(120),
-    ) { uris -> viewModel.importPhotos(uris) }
-    val openPicker: () -> Unit = {
-        picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+    // Both contracts are remembered so they are registered exactly once.
+    val galleryContract = remember { ActivityResultContracts.PickMultipleVisualMedia(MAX_PICK) }
+    val filesContract = remember { ActivityResultContracts.OpenMultipleDocuments() }
+
+    val galleryPicker = rememberLauncherForActivityResult(galleryContract) { uris ->
+        if (uris.isNotEmpty()) viewModel.importPhotos(uris)
     }
+    val filesPicker = rememberLauncherForActivityResult(filesContract) { uris ->
+        if (uris.isNotEmpty()) viewModel.importPhotos(uris)
+    }
+
+    fun launchGallery(): Boolean = runCatching {
+        galleryPicker.launch(
+            PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly),
+        )
+    }.isSuccess
+
+    fun launchFiles(): Boolean = runCatching {
+        filesPicker.launch(arrayOf("image/*"))
+    }.isSuccess
+
+    // Never leave the user with a dead tap: if one picker refuses to open, try the other.
+    fun pick(source: PhotoSource) {
+        val opened = when (source) {
+            PhotoSource.Gallery -> launchGallery()
+            PhotoSource.Files -> launchFiles()
+        }
+        if (opened) return
+        val fallbackOpened = when (source) {
+            PhotoSource.Gallery -> launchFiles()
+            PhotoSource.Files -> launchGallery()
+        }
+        if (!fallbackOpened) {
+            viewModel.reportError(
+                "No photo picker available on this device. Install a file manager or Photos app, then try again.",
+            )
+        }
+    }
+
+    var showSourceSheet by remember { mutableStateOf(false) }
+    var showTroubleshoot by remember { mutableStateOf(false) }
+    val openPicker: () -> Unit = { showSourceSheet = true }
 
     val current = photos.getOrNull(settings.lastIndex.coerceAtLeast(0)) ?: photos.firstOrNull()
 
@@ -134,6 +180,8 @@ fun HomeScreen(viewModel: HomeViewModel) {
                     busy = busy,
                     onRefresh = { viewModel.applyNow() },
                     onAdd = openPicker,
+                    onPickGallery = { pick(PhotoSource.Gallery) },
+                    onPickFiles = { pick(PhotoSource.Files) },
                 )
                 Spacer(Modifier.height(16.dp))
                 StatStrip(photos.size, settings)
@@ -167,12 +215,181 @@ fun HomeScreen(viewModel: HomeViewModel) {
                     onLockScreen = viewModel::setLockScreen,
                 )
                 Spacer(Modifier.height(28.dp))
-                Footer()
+                Footer(
+                    version = appVersion(context),
+                    onTroubleshoot = { showTroubleshoot = true },
+                )
                 Spacer(Modifier.height(28.dp))
             }
         }
     }
+
+    if (showSourceSheet) {
+        SourceSheet(
+            pickerAvailable = systemPickerAvailable(context),
+            onDismiss = { showSourceSheet = false },
+            onGallery = {
+                showSourceSheet = false
+                pick(PhotoSource.Gallery)
+            },
+            onFiles = {
+                showSourceSheet = false
+                pick(PhotoSource.Files)
+            },
+        )
+    }
+
+    if (showTroubleshoot) {
+        TroubleshootDialog(
+            context = context,
+            photoCount = photos.size,
+            lastError = lastError,
+            onDismiss = { showTroubleshoot = false },
+        )
+    }
 }
+
+private enum class PhotoSource { Gallery, Files }
+
+/* ------------------------------------------------------------------ pickers */
+
+private fun systemPickerAvailable(context: Context): Boolean = runCatching {
+    ActivityResultContracts.PickVisualMedia.isPhotoPickerAvailable(context)
+}.getOrDefault(false)
+
+private fun appVersion(context: Context): String = runCatching {
+    @Suppress("DEPRECATION")
+    context.packageManager.getPackageInfo(context.packageName, 0).versionName
+}.getOrNull() ?: "1.1"
+
+@Composable
+private fun SourceSheet(
+    pickerAvailable: Boolean,
+    onDismiss: () -> Unit,
+    onGallery: () -> Unit,
+    onFiles: () -> Unit,
+) {
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false),
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(10.dp)
+                .navigationBarsPadding(),
+            contentAlignment = Alignment.BottomCenter,
+        ) {
+            Surface(
+                shape = RoundedCornerShape(28.dp),
+                color = Surface1,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Column(modifier = Modifier.padding(20.dp)) {
+                    Text("Add photos", style = MaterialTheme.typography.titleMedium, color = Ink)
+                    Spacer(Modifier.height(6.dp))
+                    Text(
+                        "Choose from your gallery, or browse the files and folders on this device.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Muted,
+                    )
+                    Spacer(Modifier.height(18.dp))
+                    if (pickerAvailable) {
+                        SourceRow(
+                            title = "Photo gallery",
+                            subtitle = "Recent shots, albums and cloud libraries",
+                            onClick = onGallery,
+                        )
+                        Spacer(Modifier.height(10.dp))
+                    }
+                    SourceRow(
+                        title = "Files & downloads",
+                        subtitle = "Browse local storage, SD card and Downloads",
+                        onClick = onFiles,
+                    )
+                    Spacer(Modifier.height(14.dp))
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(16.dp))
+                            .clickable(onClick = onDismiss)
+                            .padding(vertical = 12.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text("Cancel", style = MaterialTheme.typography.titleMedium, color = Muted)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SourceRow(title: String, subtitle: String, onClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(18.dp))
+            .background(Surface2)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(title, style = MaterialTheme.typography.titleMedium, color = Ink)
+            Text(subtitle, style = MaterialTheme.typography.bodySmall, color = Faint)
+        }
+        GlyphIcon(Glyph.Plus, tint = Muted, modifier = Modifier.size(16.dp))
+    }
+}
+
+/* -------------------------------------------------------------- diagnostics */
+
+@Composable
+private fun TroubleshootDialog(
+    context: Context,
+    photoCount: Int,
+    lastError: String?,
+    onDismiss: () -> Unit,
+) {
+    val clipboard = LocalClipboardManager.current
+    val report = remember(photoCount, lastError) {
+        buildString {
+            appendLine("AutoWall ${appVersion(context)}")
+            appendLine("Android ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT})")
+            appendLine("Device: ${Build.MANUFACTURER} ${Build.MODEL}")
+            appendLine("Photos stored: $photoCount")
+            appendLine("System photo picker: ${if (systemPickerAvailable(context)) "available" else "not available"}")
+            append("Last error: ${lastError ?: "none recorded"}")
+        }
+    }
+
+    Dialog(onDismissRequest = onDismiss) {
+        Surface(shape = RoundedCornerShape(24.dp), color = Surface1) {
+            Column(modifier = Modifier.padding(20.dp)) {
+                Text("Troubleshoot", style = MaterialTheme.typography.titleMedium, color = Ink)
+                Spacer(Modifier.height(10.dp))
+                Text(
+                    report,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Muted,
+                    fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                )
+                Spacer(Modifier.height(16.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    SelectableChip(
+                        label = "Copy",
+                        selected = true,
+                        onClick = { clipboard.setText(AnnotatedString(report)) },
+                    )
+                    SelectableChip(label = "Close", selected = false, onClick = onDismiss)
+                }
+            }
+        }
+    }
+}
+
+/* -------------------------------------------------------------------- header */
 
 @Composable
 private fun Header(enabled: Boolean, onToggle: (Boolean) -> Unit) {
@@ -228,6 +445,8 @@ private fun BrandMark() {
     }
 }
 
+/* ---------------------------------------------------------------------- hero */
+
 @Composable
 private fun HeroCard(
     photo: File?,
@@ -235,10 +454,12 @@ private fun HeroCard(
     busy: Boolean,
     onRefresh: () -> Unit,
     onAdd: () -> Unit,
+    onPickGallery: () -> Unit,
+    onPickFiles: () -> Unit,
 ) {
     val radius = settings.cornerRadiusDp.coerceIn(0, 48).dp
     val shape = RoundedCornerShape(radius)
-    Box(modifier = Modifier.fillMaxWidth().height(330.dp)) {
+    Box(modifier = Modifier.fillMaxWidth().height(348.dp)) {
         if (photo == null) {
             Box(
                 modifier = Modifier
@@ -280,7 +501,7 @@ private fun HeroCard(
                     )
                     Spacer(Modifier.height(18.dp))
                     Surface(
-                        onClick = onAdd,
+                        onClick = onPickGallery,
                         shape = RoundedCornerShape(50),
                         color = Accent,
                         contentColor = Color(0xFF0B0B0C),
@@ -288,18 +509,41 @@ private fun HeroCard(
                         Text(
                             "Choose photos",
                             style = MaterialTheme.typography.titleMedium,
-                            modifier = Modifier.padding(horizontal = 20.dp, vertical = 11.dp),
+                            modifier = Modifier.padding(horizontal = 22.dp, vertical = 12.dp),
+                        )
+                    }
+                    Spacer(Modifier.height(10.dp))
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(50))
+                            .clickable(onClick = onPickFiles)
+                            .padding(horizontal = 14.dp, vertical = 6.dp),
+                    ) {
+                        Text(
+                            "Browse files instead",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Muted,
                         )
                     }
                 }
             }
         } else {
             Box(modifier = Modifier.fillMaxSize().clip(shape)) {
+                if (settings.fitMode == FitMode.FIT) {
+                    AsyncImage(
+                        model = photo,
+                        contentDescription = null,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .graphicsLayer { alpha = 0.45f; scaleX = 1.2f; scaleY = 1.2f },
+                    )
+                }
                 AsyncImage(
                     model = photo,
                     contentDescription = "Current wallpaper",
                     contentScale = if (settings.fitMode == FitMode.FIT) ContentScale.Fit else ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize().background(Surface1),
+                    modifier = Modifier.fillMaxSize(),
                 )
                 val tone = settings.tone
                 if (tone.argb != 0L && settings.toneStrength > 0f) {
@@ -377,6 +621,8 @@ private fun HeroCard(
     }
 }
 
+/* --------------------------------------------------------------------- stats */
+
 @Composable
 private fun StatStrip(photoCount: Int, settings: AutoWallSettings) {
     Row(
@@ -417,6 +663,8 @@ private fun Stat(
     }
 }
 
+/* ------------------------------------------------------------------ photos */
+
 @Composable
 private fun PhotoStrip(
     photos: List<File>,
@@ -454,7 +702,7 @@ private fun PhotoStrip(
                 Box(
                     modifier = Modifier
                         .padding(6.dp)
-                        .size(22.dp)
+                        .size(24.dp)
                         .align(Alignment.TopEnd)
                         .clip(CircleShape)
                         .background(Color(0x99000000))
@@ -510,6 +758,8 @@ private fun IntervalRow(selected: Int, onSelect: (Int) -> Unit) {
         }
     }
 }
+
+/* --------------------------------------------------------------------- look */
 
 @Composable
 private fun LookCard(
@@ -682,7 +932,7 @@ private fun sliderColors() = SliderDefaults.colors(
 )
 
 @Composable
-private fun Footer() {
+private fun Footer(version: String, onTroubleshoot: () -> Unit) {
     Column(modifier = Modifier.fillMaxWidth()) {
         Box(
             modifier = Modifier
@@ -696,14 +946,31 @@ private fun Footer() {
             style = MaterialTheme.typography.bodySmall,
             color = Faint,
         )
-        Spacer(Modifier.height(6.dp))
-        Text(
-            "AutoWall 1.0",
-            style = MaterialTheme.typography.labelSmall,
-            color = Faint,
-        )
+        Spacer(Modifier.height(10.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                "AutoWall $version",
+                style = MaterialTheme.typography.labelSmall,
+                color = Faint,
+            )
+            Spacer(Modifier.weight(1f))
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(50))
+                    .clickable(onClick = onTroubleshoot)
+                    .padding(horizontal = 10.dp, vertical = 4.dp),
+            ) {
+                Text(
+                    "Troubleshoot",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Muted,
+                )
+            }
+        }
     }
 }
+
+/* -------------------------------------------------------------------- helper */
 
 private fun relativeTime(timestamp: Long): String {
     if (timestamp <= 0L) return "Preview"
@@ -717,7 +984,7 @@ private fun relativeTime(timestamp: Long): String {
 }
 
 private fun nextChange(settings: AutoWallSettings): String {
-    if (settings.lastAppliedAt <= 0L) return "${intervalLabel(settings.intervalMinutes)}"
+    if (settings.lastAppliedAt <= 0L) return intervalLabel(settings.intervalMinutes)
     val due = settings.lastAppliedAt + settings.intervalMinutes * 60_000L
     val remaining = due - System.currentTimeMillis()
     return when {

@@ -5,6 +5,7 @@ import android.net.Uri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.autowall.changer.data.GalleryStore
+import com.autowall.changer.data.ImportResult
 import com.autowall.changer.data.SettingsRepository
 import com.autowall.changer.model.AutoWallSettings
 import com.autowall.changer.model.FitMode
@@ -40,9 +41,13 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
     private val _message = MutableStateFlow<String?>(null)
     val message: StateFlow<String?> = _message.asStateFlow()
 
+    /** Last failure worth showing in the in-app diagnostics sheet. */
+    private val _lastError = MutableStateFlow<String?>(null)
+    val lastError: StateFlow<String?> = _lastError.asStateFlow()
+
     init {
         viewModelScope.launch {
-            val current = repository.settings.first()
+            val current = settings.first()
             if (current.enabled) Scheduler.sync(getApplication(), current)
         }
     }
@@ -51,22 +56,32 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         _message.value = null
     }
 
+    fun reportError(message: String) {
+        _lastError.value = message
+        _message.value = message
+    }
+
     fun importPhotos(uris: List<Uri>) {
         if (uris.isEmpty()) return
         viewModelScope.launch(Dispatchers.IO) {
-            val added = gallery.import(uris)
+            val result = runCatching { gallery.import(uris) }.getOrElse { error ->
+                ImportResult(0, uris.size, error.message ?: error.javaClass.simpleName)
+            }
             _photos.value = gallery.photos()
+            if (result.lastError != null) _lastError.value = result.lastError
             _message.value = when {
-                added == 0 -> "Couldn't read those photos"
-                added == 1 -> "Photo added"
-                else -> "$added photos added"
+                result.imported > 0 && result.failed == 0 ->
+                    if (result.imported == 1) "Photo added" else "${result.imported} photos added"
+
+                result.imported > 0 -> "${result.imported} added · ${result.failed} couldn't be read"
+                else -> "Couldn't read those photos — open Troubleshoot"
             }
         }
     }
 
     fun removePhoto(file: File) {
         viewModelScope.launch(Dispatchers.IO) {
-            gallery.delete(file)
+            runCatching { gallery.delete(file) }
             _photos.value = gallery.photos()
             _message.value = "Photo removed"
         }
@@ -136,7 +151,9 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
                     _message.value = "Wallpaper updated"
                 }
                 .onFailure { error ->
-                    _message.value = error.message ?: "Couldn't set the wallpaper"
+                    val text = error.message ?: error.javaClass.simpleName
+                    _lastError.value = text
+                    _message.value = text
                 }
             _busy.value = false
         }

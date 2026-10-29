@@ -57,9 +57,9 @@ object WallpaperEngine {
                     "Android blocked the wallpaper change: ${security.message}",
                     security,
                 )
-            } finally {
-                if (!bitmap.isRecycled) bitmap.recycle()
             }
+            // The bitmap is intentionally left for the GC: some OEM wallpaper services
+            // read it lazily after setBitmap() returns.
         }
 
     fun screenSize(context: Context): Screen {
