@@ -27,7 +27,26 @@ jobs:
         uses: gradle/actions/setup-gradle@v3
 
       - name: Build
-        run: ./gradlew :app:assembleRelease --no-daemon --stacktrace
+        id: build
+        run: |
+          set -o pipefail
+          ./gradlew :app:assembleRelease --no-daemon --stacktrace --console=plain 2>&1 | tee build.log
+
+      # Job logs are not always reachable from every environment, so surface the
+      # tail of the Gradle output as a commit comment when the build breaks.
+      - name: Report build failure
+        if: failure() && steps.build.outcome == 'failure'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          {
+            echo 'Gradle build failed. Last 400 lines:'
+            echo '```'
+            tail -n 400 build.log || true
+            echo '```'
+          } > failure.md
+          gh api -X POST "repos/${{ github.repository }}/commits/${{ github.sha }}/comments" \
+            -F body=@failure.md > /dev/null || echo "could not post comment"
 
       - name: Stage APK
         run: |

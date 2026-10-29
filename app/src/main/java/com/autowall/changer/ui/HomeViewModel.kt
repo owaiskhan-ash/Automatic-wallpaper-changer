@@ -81,6 +81,7 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
             val next = settings.value.copy(enabled = enabled)
             repository.update { it.copy(enabled = enabled) }
             Scheduler.sync(getApplication(), next)
+            if (enabled) Scheduler.changeNow(getApplication())
             _message.value = if (enabled) "Auto rotation on" else "Auto rotation paused"
         }
     }
